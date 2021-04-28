@@ -1,6 +1,8 @@
 use anyhow::Result;
 use structopt::StructOpt;
 
+mod cmd;
+
 /// Connect to AWS EC2 hosts via a Bastion / Jump host
 #[derive(StructOpt)]
 #[structopt(name = "heimdallr")]
@@ -35,7 +37,12 @@ enum Command {
     Update,
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let opt = Heimdallr::from_args();
-    Ok(())
+
+    match opt.cmd {
+        Command::List => cmd::list::list_running_instances().await,
+        _ => Ok(()),
+    }
 }
