@@ -1,11 +1,15 @@
 use anyhow::Result;
+use rusoto_core::region;
+use rusoto_ec2::Ec2Client;
+use rusoto_ecs::EcsClient;
 use structopt::StructOpt;
 
-mod cmd;
+mod application;
+mod domain;
 
 /// Connect to AWS EC2 hosts via a Bastion / Jump host
 #[derive(StructOpt)]
-#[structopt(name = "heimdallr")]
+#[structopt(name = "heimdallr", global_settings = &[structopt::clap::AppSettings::AllowLeadingHyphen])]
 struct Heimdallr {
     /// Profile name as specified in your configuration file
     #[structopt(name = "profile", long, short = "p")]
@@ -22,6 +26,7 @@ enum Command {
 
     /// Add your IP to a security group to allow ingress
     Grant {
+        // TODO(mmk) Security group will eventually be optional once config support is added
         /// The security group id that controls ingress to the bastion server
         #[structopt(name = "security-group-id", long, short = "s")]
         security_group_id: String,
@@ -39,7 +44,20 @@ enum Command {
     },
 
     /// Connect to a running instance
-    Connect,
+    Connect {
+        /// The host name of the bastion server
+        #[structopt(name = "dns-name", long, short = "d")]
+        dns_name: String,
+
+        /// The target to connect. Supported formats are host, user@host, cluster#service,
+        /// cluster#service#container
+        #[structopt()]
+        target: String,
+
+        /// An optional command to execute on the specified target
+        #[structopt(default_value = "bash")]
+        cmd: Vec<String>,
+    },
 
     /// Update this executable to the latest version
     Update,
@@ -49,13 +67,33 @@ enum Command {
 async fn main() -> Result<()> {
     let opt = Heimdallr::from_args();
 
+    let ec2_client = Ec2Client::new(region::Region::UsEast1);
+    let ecs_client = EcsClient::new(region::Region::UsEast1);
+
+    let security_group_handler = application::security_groups::Handler::new(&ec2_client);
+    let list_instances_handler = application::list_instances::Handler::new(&ec2_client);
+    let connect_handler = application::connect::Handler::new(&ecs_client, &ec2_client);
+
     match opt.cmd {
-        Command::List => cmd::list::list_running_instances().await,
+        Command::List => list_instances_handler.list().await,
         Command::Grant {
             security_group_id,
             description,
-        } => cmd::access::grant(security_group_id, description).await,
-        Command::Revoke { security_group_id } => cmd::access::revoke(security_group_id).await,
+        } => {
+            security_group_handler
+                .grant_access(security_group_id, description)
+                .await
+        }
+        Command::Revoke { security_group_id } => {
+            security_group_handler
+                .revoke_access(security_group_id)
+                .await
+        }
+        Command::Connect {
+            dns_name,
+            target,
+            cmd,
+        } => connect_handler.connect(dns_name, &target, cmd).await,
         _ => Ok(()),
     }
 }

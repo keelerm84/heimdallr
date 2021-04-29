@@ -8,10 +8,12 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.40"
+dialoguer = "0.8.0"
 itertools = "0.10.0"
 prettytable-rs = "0.8.0"
 public-ip = "0.2.0"
 rusoto_core = "0.46.0"
 rusoto_ec2 = "0.46.0"
+rusoto_ecs = "0.46.0"
 structopt = "0.3.21"
 tokio = "1.5.0"
