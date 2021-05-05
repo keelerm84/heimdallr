@@ -6,6 +6,7 @@ use structopt::StructOpt;
 
 mod application;
 mod domain;
+mod ui;
 
 /// Connect to AWS EC2 hosts via a Bastion / Jump host
 #[derive(StructOpt)]
@@ -93,7 +94,7 @@ async fn main() -> Result<()> {
             dns_name,
             target,
             cmd,
-        } => connect_handler.connect(dns_name, &target, cmd).await,
+        } => ui::connect::connect(connect_handler, dns_name, &target, cmd).await,
         _ => Ok(()),
     }
 }

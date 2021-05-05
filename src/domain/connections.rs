@@ -93,7 +93,7 @@ impl Connections {
             .collect()
     }
 
-    pub fn get_connection_choices(&self) -> Vec<ConnectionChoice> {
+    pub fn get_connection_choices(&self) -> Vec<Box<dyn SshConnection>> {
         self.connections
             .clone()
             .into_iter()
@@ -143,18 +143,24 @@ impl Connection {
         self.private_ip = Some(ip);
     }
 
-    fn get_connection_choices(&self) -> Vec<ConnectionChoice> {
+    fn get_connection_choices(&self) -> Vec<Box<dyn SshConnection>> {
         self.containers
             .iter()
-            .map(|container| ConnectionChoice {
-                instance_id: self.instance_id.clone().unwrap(),
-                instance_name: self.instance_name.clone().unwrap(),
-                private_ip: self.private_ip.clone().unwrap(),
-                name: container.name.clone(),
-                runtime_id: container.runtime_id.clone(),
+            .map(|container| {
+                Box::new(ConnectionChoice {
+                    instance_id: self.instance_id.clone().unwrap(),
+                    instance_name: self.instance_name.clone().unwrap(),
+                    private_ip: self.private_ip.clone().unwrap(),
+                    name: container.name.clone(),
+                    runtime_id: container.runtime_id.clone(),
+                }) as Box<dyn SshConnection>
             })
             .collect()
     }
+}
+
+pub trait SshConnection: fmt::Display {
+    fn connection(&self, dns_name: String) -> String;
 }
 
 #[derive(Debug)]
@@ -173,6 +179,40 @@ impl fmt::Display for ConnectionChoice {
             f,
             "{} ({}) on {} ({})",
             self.name, self.runtime_id, self.instance_name, self.instance_id
+        )
+    }
+}
+
+impl SshConnection for ConnectionChoice {
+    fn connection(&self, dns_name: String) -> String {
+        format!(
+            "ssh -i SSH_KEY_FILE -p BASTION_HOST_PORT -A -t BASTION_USER@{} ssh -A -t USER@{}",
+            dns_name, self.private_ip
+        )
+    }
+}
+
+pub struct HostConnection {
+    pub name: String,
+    pub private_ip: String,
+    pub instance_id: String,
+}
+
+impl fmt::Display for HostConnection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} ({}) @ {}",
+            self.name, self.instance_id, self.private_ip
+        )
+    }
+}
+
+impl SshConnection for HostConnection {
+    fn connection(&self, dns_name: String) -> String {
+        format!(
+            "ssh -i SSH_KEY_FILE -p BASTION_HOST_PORT -A -t BASTION_USER@{} ssh -A -t USER@{}",
+            dns_name, self.private_ip
         )
     }
 }
