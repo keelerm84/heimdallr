@@ -6,7 +6,7 @@ use rusoto_ecs::{
 };
 use std::collections::HashMap;
 
-use crate::domain;
+use crate::domain::{self, connections::ConnectionChoice};
 
 pub struct Handler<'a> {
     ecs_client: &'a EcsClient,
@@ -26,49 +26,58 @@ impl<'a> Handler<'a> {
             target if target.contains('#') => {
                 let parts: Vec<&str> = target.split('#').take(3).collect();
 
-                if let [cluster, service] = parts[..] {
-                    let mut connections = self.build_connections(cluster, service).await?;
-                    self.add_containers_to_connections(cluster, &mut connections)
-                        .await?;
-                    self.add_ec2_instance_ids_to_connections(cluster, &mut connections)
-                        .await?;
-                    self.add_name_and_ip(&mut connections).await?;
+                let connections = match parts[..] {
+                    [cluster, service] => {
+                        let conns = self
+                            .build_cluster_and_service_options(cluster, service, None)
+                            .await?;
 
-                    if let Some(connection) = connections.get_connections().first() {
-                        if connection.get_containers().len() > 1 {
-                            let mut names: Vec<String> = connection
-                                .get_containers()
-                                .iter()
-                                .map(|container| container.name.clone())
-                                .collect();
-                            names.sort();
+                        if let Some(connection) = conns.get_connections().first() {
+                            if connection.get_containers().len() > 1 {
+                                let mut names: Vec<String> = connection
+                                    .get_containers()
+                                    .iter()
+                                    .map(|container| container.name.clone())
+                                    .collect();
+                                names.sort();
 
-                            return Err(anyhow!(format!(
-                                        "Ambiguous connection options. Specify container with {}#{}#{{{}}}.",
-                                        cluster,
-                                        service,
-                                        names.join(", ")
-                            )));
+                                return Err(anyhow!(format!(
+                                    "Ambiguous connection options. Specify container with {}#{}#{{{}}}.",
+                                    cluster,
+                                    service,
+                                    names.join(", ")
+                                )));
+                            }
                         }
+
+                        Ok(conns)
                     }
-
-                    if connections.get_connections().len() > 1 {
-                        let options = connections.get_connection_choices();
-                        let theme = ColorfulTheme::default();
-                        let mut selection = Select::with_theme(&theme);
-                        selection.with_prompt("Select the instance to connect to");
-                        selection.items(options.as_slice());
-
-                        let selection_choice = selection
-                            .interact()
-                            .context("Selection cancelled. Exiting.")?;
-                        println!("{:?}", &options[selection_choice]);
-                    } else {
-                        let options = connections.get_connection_choices();
-                        println!("{:?}", &options[0]);
+                    [cluster, service, container] => {
+                        self.build_cluster_and_service_options(cluster, service, Some(container))
+                            .await
                     }
+                    _ => Err(anyhow!("Invalid target format specified.")),
+                }?;
 
-                    return Ok(());
+                if connections.get_connections().len() > 1 {
+                    let options = connections.get_connection_choices();
+                    let theme = ColorfulTheme::default();
+                    let mut selection = Select::with_theme(&theme);
+                    selection.with_prompt("Select the instance to connect to");
+                    selection.items(options.as_slice());
+
+                    let selection_choice = selection
+                        .interact()
+                        .context("Selection cancelled. Exiting.")?;
+                    self.print_connection_information(&options[selection_choice], dns_name);
+                } else {
+                    match connections.get_connection_choices() {
+                        choices if choices.len() == 1 => {
+                            self.print_connection_information(&choices[0], dns_name);
+                            Ok(())
+                        }
+                        _ => Err(anyhow!("No connection choices found")),
+                    }?;
                 }
 
                 Ok(())
@@ -77,15 +86,38 @@ impl<'a> Handler<'a> {
                 let parts: Vec<&str> = target.split("@").collect();
                 let choices = self.get_connection_options_for_host(parts[1]).await?;
 
-                println!("{:?}", choices);
+                if choices.len() > 1 {
+                    let theme = ColorfulTheme::default();
+                    let mut selection = Select::with_theme(&theme);
+                    selection.with_prompt("Select the instance to connect to");
+                    selection.items(choices.as_slice());
+
+                    let selection_choice = selection
+                        .interact()
+                        .context("Selection cancelled. Exiting.")?;
+                    self.print_connection_information(&choices[selection_choice], dns_name);
+                } else if choices.len() == 1 {
+                    self.print_connection_information(&choices[0], dns_name);
+                }
 
                 Ok(())
             }
             _ => {
-                let parts: Vec<&str> = target.split("@").collect();
                 let choices = self.get_connection_options_for_host(target).await?;
 
-                println!("{:?}", choices);
+                if choices.len() > 1 {
+                    let theme = ColorfulTheme::default();
+                    let mut selection = Select::with_theme(&theme);
+                    selection.with_prompt("Select the instance to connect to");
+                    selection.items(choices.as_slice());
+
+                    let selection_choice = selection
+                        .interact()
+                        .context("Selection cancelled. Exiting.")?;
+                    self.print_connection_information(&choices[selection_choice], dns_name);
+                } else if choices.len() == 1 {
+                    self.print_connection_information(&choices[0], dns_name);
+                }
 
                 Ok(())
             }
@@ -120,6 +152,7 @@ impl<'a> Handler<'a> {
     async fn add_containers_to_connections(
         &self,
         cluster: &str,
+        container_name: Option<&str>,
         connections: &mut domain::connections::Connections,
     ) -> Result<()> {
         let mut request = DescribeTasksRequest::default();
@@ -143,6 +176,14 @@ impl<'a> Handler<'a> {
                     continue;
                 }
 
+                let name = container.name.unwrap();
+
+                if let Some(cn) = container_name {
+                    if cn != name {
+                        continue;
+                    }
+                }
+
                 let task_id = container
                     .task_arn
                     .unwrap()
@@ -155,7 +196,7 @@ impl<'a> Handler<'a> {
                     task_id.clone(),
                     domain::connections::Container {
                         runtime_id: container.runtime_id.unwrap(),
-                        name: container.name.unwrap(),
+                        name,
                     },
                 );
 
@@ -178,6 +219,12 @@ impl<'a> Handler<'a> {
         cluster: &str,
         connections: &mut domain::connections::Connections,
     ) -> Result<()> {
+        // TODO(mmk) This return type could be more specific. We could make a custom type and use
+        // it to prevent calling the other decorate methods instead of having different checks at
+        // the top of each one
+        if connections.container_arns().is_empty() {
+            return Ok(());
+        }
         let mut request = DescribeContainerInstancesRequest::default();
         request.cluster = Some(cluster.into());
         request.container_instances = connections.container_arns();
@@ -208,6 +255,12 @@ impl<'a> Handler<'a> {
         &self,
         connections: &mut domain::connections::Connections,
     ) -> Result<()> {
+        // TODO(mmk) If we do the comment in add_ec2_instance_ids_to_connections, then we can
+        // probably remove this check.
+        if connections.instance_ids().is_empty() {
+            return Ok(());
+        }
+
         let mut request = DescribeInstancesRequest::default();
         request.instance_ids = Some(connections.instance_ids());
 
@@ -238,7 +291,7 @@ impl<'a> Handler<'a> {
         Ok(())
     }
 
-    async fn get_connection_options_for_host(&self, host: &str) -> Result<Vec<(String, String)>> {
+    async fn get_connection_options_for_host(&self, host: &str) -> Result<Vec<ConnectionChoice>> {
         let mut request = DescribeInstancesRequest::default();
         request.filters = Some(vec![
             filter!("instance-state-name", "running"),
@@ -252,7 +305,7 @@ impl<'a> Handler<'a> {
             .await
             .context("Failed to retrieve ec2 instances")?;
 
-        let mut choices: Vec<(String, String)> = Vec::new();
+        let mut choices: Vec<domain::connections::ConnectionChoice> = Vec::new();
 
         let reservations = result.reservations.unwrap_or_default();
         for reservation in reservations {
@@ -262,7 +315,13 @@ impl<'a> Handler<'a> {
                     Some(ip) => {
                         let instance_id =
                             instance.instance_id.unwrap_or("Unknown instance id".into());
-                        choices.push((ip, instance_id));
+                        choices.push(domain::connections::ConnectionChoice {
+                            instance_id,
+                            instance_name: String::from("WHAT IS THE INSTANCE NAME"),
+                            private_ip: ip,
+                            name: instance.private_dns_name.unwrap(),
+                            runtime_id: String::from("WHAT SHOULD I PUT HERE?"),
+                        });
                     }
                     _ => continue,
                 };
@@ -270,5 +329,32 @@ impl<'a> Handler<'a> {
         }
 
         Ok(choices)
+    }
+
+    fn print_connection_information(
+        &self,
+        connect_choice: &domain::connections::ConnectionChoice,
+        dns_name: String,
+    ) {
+        println!(
+            "ssh -i SSH_KEY_FILE -p BASTION_HOST_PORT -A -t BASTION_USER@{} ssh -A -t USER@{}",
+            dns_name, connect_choice.private_ip
+        );
+    }
+
+    async fn build_cluster_and_service_options(
+        &self,
+        cluster: &str,
+        service: &str,
+        container: Option<&str>,
+    ) -> Result<domain::connections::Connections> {
+        let mut connections = self.build_connections(cluster, service).await?;
+        self.add_containers_to_connections(cluster, container, &mut connections)
+            .await?;
+        self.add_ec2_instance_ids_to_connections(cluster, &mut connections)
+            .await?;
+        self.add_name_and_ip(&mut connections).await?;
+
+        Ok(connections)
     }
 }

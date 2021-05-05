@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Container {
     pub name: String,
     pub runtime_id: String,
@@ -36,9 +36,9 @@ impl Connections {
 
     pub fn container_arns(&self) -> Vec<String> {
         self.connections
-            .values()
+            .clone()
             .into_iter()
-            .map(|connection| connection.container_instance_id.clone().unwrap())
+            .filter_map(|(_, connection)| connection.container_instance_id.clone())
             .collect()
     }
 
@@ -102,7 +102,7 @@ impl Connections {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Connection {
     container_instance_id: Option<String>,
     containers: Vec<Container>,
@@ -158,12 +158,13 @@ impl Connection {
 }
 
 #[derive(Debug)]
+// TODO(mmk) Do we really need to expose all of these as public fields?
 pub struct ConnectionChoice {
-    instance_id: String,
-    instance_name: String,
-    private_ip: String,
-    name: String,
-    runtime_id: String,
+    pub instance_id: String,
+    pub instance_name: String,
+    pub private_ip: String,
+    pub name: String,
+    pub runtime_id: String,
 }
 
 impl fmt::Display for ConnectionChoice {
