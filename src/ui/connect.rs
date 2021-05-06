@@ -1,5 +1,5 @@
 use crate::application::connect::Handler;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, Select};
 
 pub async fn connect<'a>(

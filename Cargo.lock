@@ -623,6 +623,7 @@ dependencies = [
  "prettytable-rs",
  "public-ip",
  "rusoto_core",
+ "rusoto_credential",
  "rusoto_ec2",
  "rusoto_ecs",
  "structopt",
