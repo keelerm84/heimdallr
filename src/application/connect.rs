@@ -121,8 +121,7 @@ impl<'a> Handler<'a> {
         let mut connections = Connections::new();
 
         for task_arn in result.task_arns.unwrap_or_default() {
-            let task_id = task_arn.split("/").last().unwrap().to_string();
-            connections.add_connection(task_id, Connection::new());
+            connections.add_connection(arn_to_id(&task_arn).to_string(), Connection::new());
         }
 
         Ok(connections)
@@ -163,30 +162,22 @@ impl<'a> Handler<'a> {
                     }
                 }
 
-                let task_id = container
-                    .task_arn
-                    .unwrap()
-                    .split("/")
-                    .last()
-                    .unwrap()
-                    .to_string();
+                if let Some(task_arn) = container.task_arn {
+                    let task_id = arn_to_id(&task_arn).to_string();
 
-                connections.add_container(
-                    task_id.clone(),
-                    Container {
-                        runtime_id: container.runtime_id.unwrap(),
-                        name,
-                    },
-                );
+                    connections.add_container(
+                        task_id.clone(),
+                        Container {
+                            runtime_id: container.runtime_id.unwrap(),
+                            name,
+                        },
+                    );
 
-                connections.set_container_instance_id(
-                    task_id.clone(),
-                    container_instance_arn
-                        .split("/")
-                        .last()
-                        .unwrap()
-                        .to_string(),
-                );
+                    connections.set_container_instance_id(
+                        task_id,
+                        arn_to_id(&container_instance_arn).to_string(),
+                    );
+                }
             }
         }
 
@@ -216,13 +207,7 @@ impl<'a> Handler<'a> {
 
         for container_instance in result.container_instances.unwrap_or_default() {
             connections.set_ec2_instance_id(
-                container_instance
-                    .container_instance_arn
-                    .unwrap()
-                    .split("/")
-                    .last()
-                    .unwrap()
-                    .to_string(),
+                arn_to_id(container_instance.container_instance_arn.unwrap().as_str()).to_string(),
                 container_instance.ec_2_instance_id.unwrap(),
             );
         }
@@ -281,5 +266,24 @@ impl<'a> Handler<'a> {
         self.add_name_and_ip(&mut connections).await?;
 
         Ok(connections)
+    }
+}
+
+fn arn_to_id(arn: &str) -> &str {
+    arn.split('/').last().unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::arn_to_id;
+
+    #[test]
+    fn arn_to_id_works_as_expected() {
+        assert_eq!(
+            "abcdefghijklmnopqrstuvwxyz",
+            arn_to_id(
+                "arn:aws:ecs:us-east-1:123456789012:task/cluster-name/abcdefghijklmnopqrstuvwxyz"
+            )
+        );
     }
 }
