@@ -88,7 +88,7 @@ async fn main() -> Result<()> {
     let connect_handler = application::connect::Handler::new(&ecs_client, &ec2_client);
 
     match opt.cmd {
-        Command::List => list_instances_handler.list().await,
+        Command::List => ui::list::list(list_instances_handler).await,
         Command::Grant {
             security_group_id,
             description,

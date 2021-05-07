@@ -1,6 +1,4 @@
 use anyhow::{Context, Result};
-use itertools::Itertools;
-use prettytable::{cell, format, row, Table};
 use rusoto_ec2::{filter, DescribeInstancesRequest, Ec2, Ec2Client};
 use std::collections::HashMap;
 
@@ -13,7 +11,7 @@ impl<'a> Handler<'a> {
         Self { client }
     }
 
-    pub async fn list(self) -> Result<()> {
+    pub async fn list(self) -> Result<HashMap<String, Vec<(String, String)>>> {
         let mut running_instances: HashMap<String, Vec<(String, String)>> = HashMap::new();
 
         let mut next_token = None;
@@ -62,39 +60,6 @@ impl<'a> Handler<'a> {
             }
         }
 
-        self.print_running_instances(running_instances);
-
-        Ok(())
-    }
-
-    fn print_running_instances(self, instances: HashMap<String, Vec<(String, String)>>) {
-        let format = format::FormatBuilder::new()
-            .column_separator('│')
-            .borders('│')
-            .separators(
-                &[format::LinePosition::Title],
-                format::LineSeparator::new('─', '┼', '├', '┤'),
-            )
-            .padding(1, 1)
-            .build();
-        let mut table = Table::new();
-        table.set_format(format);
-        table.set_titles(row![Fgb->"Environment", Fgb->"Name", Fgb->"Instance Id"]);
-
-        let environment_count = instances.keys().count();
-        for (i, env) in instances.keys().sorted().enumerate() {
-            let mut instances = instances.get(env).unwrap().to_owned();
-            instances.sort_by(|lhs, rhs| lhs.0.partial_cmp(&rhs.0).unwrap());
-
-            for instance in instances {
-                table.add_row(row![Fbb->env, Fyb->instance.0, Fcb->instance.1]);
-            }
-
-            if i + 1 != environment_count {
-                table.add_row(row![]);
-            }
-        }
-
-        table.printstd();
+        Ok(running_instances)
     }
 }
