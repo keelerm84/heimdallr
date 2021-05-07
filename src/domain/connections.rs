@@ -38,7 +38,7 @@ impl Connections {
         self.connections
             .clone()
             .into_iter()
-            .filter_map(|(_, connection)| connection.container_instance_id.clone())
+            .filter_map(|(_, connection)| connection.container_instance_id)
             .collect()
     }
 

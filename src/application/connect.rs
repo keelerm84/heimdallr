@@ -91,8 +91,9 @@ impl<'a> Handler<'a> {
             for instance in instances {
                 match instance.private_ip_address {
                     Some(ip) => {
-                        let instance_id =
-                            instance.instance_id.unwrap_or("Unknown instance id".into());
+                        let instance_id = instance
+                            .instance_id
+                            .unwrap_or_else(|| "Unknown instance id".into());
                         choices.push(Box::new(HostConnection {
                             name: host.into(),
                             instance_id,

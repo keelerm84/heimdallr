@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use prettytable::{cell, format, row, Table};
 
-pub async fn list<'a>(handler: Handler<'a>) -> Result<()> {
+pub async fn list(handler: Handler<'_>) -> Result<()> {
     let running_instances = handler.list().await?;
 
     if running_instances.is_empty() {

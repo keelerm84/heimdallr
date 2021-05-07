@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
     let opt = Heimdallr::from_args();
 
     let mut provider = ProfileProvider::new()?;
-    provider.set_profile(opt.profile.unwrap_or("default".into()));
+    provider.set_profile(opt.profile.unwrap_or_else(|| "default".into()));
 
     let ec2_client = Ec2Client::new_with(
         HttpClient::new().unwrap(),
