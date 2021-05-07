@@ -51,6 +51,23 @@ enum Command {
         #[structopt(name = "dns-name", long, short = "d")]
         dns_name: String,
 
+        /// The ssh port of the bastion server
+        #[structopt(name = "bastion-port", long, short = "p")]
+        bastion_port: String,
+
+        /// The ssh user of the bastion server
+        #[structopt(name = "bastion-user", long, short = "u")]
+        bastion_user: String,
+
+        /// The user of the ec2 server
+        #[structopt(name = "ec2-user", long, short = "e")]
+        ec2_user: String,
+
+        // TODO(mmk) Is there a better variable type to verify that the file exists?
+        /// The ssh identity file to use
+        #[structopt(name = "identity-file", long, short = "i")]
+        identity_file: String,
+
         /// The target to connect. Supported formats are host, user@host, cluster#service,
         /// cluster#service#container
         #[structopt()]
@@ -104,9 +121,25 @@ async fn main() -> Result<()> {
         }
         Command::Connect {
             dns_name,
+            bastion_port,
+            bastion_user,
+            ec2_user,
+            identity_file,
             target,
             cmd,
-        } => ui::connect::connect(connect_handler, dns_name, &target, cmd).await,
+        } => {
+            ui::connect::connect(
+                connect_handler,
+                dns_name,
+                bastion_port,
+                bastion_user,
+                ec2_user,
+                identity_file,
+                &target,
+                cmd,
+            )
+            .await
+        }
         _ => Ok(()),
     }
 }

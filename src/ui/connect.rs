@@ -5,6 +5,10 @@ use dialoguer::{theme::ColorfulTheme, Select};
 pub async fn connect<'a>(
     handler: Handler<'a>,
     dns_name: String,
+    bastion_port: String,
+    bastion_user: String,
+    ec2_user: String,
+    ssh_identity_file: String,
     target: &str,
     cmd: Vec<String>,
 ) -> Result<()> {
@@ -28,9 +32,29 @@ pub async fn connect<'a>(
         let selection_choice = selection
             .interact()
             .context("Selection cancelled. Exiting.")?;
-        println!("{}", &choices[selection_choice]);
+        println!(
+            "{}",
+            &choices[selection_choice].connection(
+                dns_name,
+                bastion_port,
+                bastion_user,
+                ec2_user,
+                ssh_identity_file,
+                cmd
+            )
+        );
     } else if choices.len() == 1 {
-        println!("{}", &choices[0]);
+        println!(
+            "{}",
+            &choices[0].connection(
+                dns_name,
+                bastion_port,
+                bastion_user,
+                ec2_user,
+                ssh_identity_file,
+                cmd
+            )
+        );
     } else {
         println!("No choice match");
     }

@@ -147,7 +147,7 @@ impl Connection {
         self.containers
             .iter()
             .map(|container| {
-                Box::new(ConnectionChoice {
+                Box::new(ContainerChoice {
                     instance_id: self.instance_id.clone().unwrap(),
                     instance_name: self.instance_name.clone().unwrap(),
                     private_ip: self.private_ip.clone().unwrap(),
@@ -160,12 +160,20 @@ impl Connection {
 }
 
 pub trait SshConnection: fmt::Display {
-    fn connection(&self, dns_name: String) -> String;
+    fn connection(
+        &self,
+        dns_name: String,
+        bastion_port: String,
+        bastion_user: String,
+        ec2_user: String,
+        ssh_identity_file: String,
+        cmd: Vec<String>,
+    ) -> String;
 }
 
 #[derive(Debug)]
 // TODO(mmk) Do we really need to expose all of these as public fields?
-pub struct ConnectionChoice {
+pub struct ContainerChoice {
     pub instance_id: String,
     pub instance_name: String,
     pub private_ip: String,
@@ -173,7 +181,7 @@ pub struct ConnectionChoice {
     pub runtime_id: String,
 }
 
-impl fmt::Display for ConnectionChoice {
+impl fmt::Display for ContainerChoice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -183,11 +191,26 @@ impl fmt::Display for ConnectionChoice {
     }
 }
 
-impl SshConnection for ConnectionChoice {
-    fn connection(&self, dns_name: String) -> String {
+impl SshConnection for ContainerChoice {
+    fn connection(
+        &self,
+        dns_name: String,
+        bastion_port: String,
+        bastion_user: String,
+        ec2_user: String,
+        ssh_identity_file: String,
+        cmd: Vec<String>,
+    ) -> String {
         format!(
-            "ssh -i SSH_KEY_FILE -p BASTION_HOST_PORT -A -t BASTION_USER@{} ssh -A -t USER@{}",
-            dns_name, self.private_ip
+            "ssh -i {identity_file} -p {bastion_port} -A -t {bastion_user}@{dns_name} \"ssh -A -t {ec2_user}@{ip} \\\"docker exec -it --detach-keys 'ctrl-q,q' {docker_id} {cmd}\\\"\"",
+            identity_file=ssh_identity_file,
+            bastion_port=bastion_port,
+            bastion_user=bastion_user,
+            ec2_user=ec2_user,
+            dns_name=dns_name,
+            ip=self.private_ip,
+            docker_id=&self.runtime_id[..12],
+            cmd=cmd.join(" ")
         )
     }
 }
@@ -209,10 +232,24 @@ impl fmt::Display for HostConnection {
 }
 
 impl SshConnection for HostConnection {
-    fn connection(&self, dns_name: String) -> String {
+    fn connection(
+        &self,
+        dns_name: String,
+        bastion_port: String,
+        bastion_user: String,
+        ec2_user: String,
+        ssh_identity_file: String,
+        cmd: Vec<String>,
+    ) -> String {
         format!(
-            "ssh -i SSH_KEY_FILE -p BASTION_HOST_PORT -A -t BASTION_USER@{} ssh -A -t USER@{}",
-            dns_name, self.private_ip
+            "ssh -i {identity_file} -p {bastion_port} -A -t {bastion_user}@{dns_name} ssh -A -t {ec2_user}@{ip} {cmd}",
+            identity_file=ssh_identity_file,
+            bastion_port=bastion_port,
+            bastion_user=bastion_user,
+            ec2_user=ec2_user,
+            dns_name=dns_name,
+            ip=self.private_ip,
+            cmd=cmd.join(" ")
         )
     }
 }
