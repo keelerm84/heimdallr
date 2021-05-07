@@ -1,10 +1,14 @@
 use crate::application::list_instances::Handler;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use prettytable::{cell, format, row, Table};
 
 pub async fn list<'a>(handler: Handler<'a>) -> Result<()> {
     let running_instances = handler.list().await?;
+
+    if running_instances.is_empty() {
+        return Err(anyhow!("No instances were found"));
+    }
 
     let format = format::FormatBuilder::new()
         .column_separator('│')
