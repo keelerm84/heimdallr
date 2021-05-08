@@ -92,6 +92,13 @@ set Name and Env tags on each instance.
 
 [MIT](./LICENSE.md)
 
+## Roadmap
+
+- Add GitHub actions to build static binaries and publish to release page
+- Complete `update` subcommand to allow in place updates of executable
+- Introduce configuration file to reduce command line parameter requirements
+- Lots of refactoring as I learn more about rust :crab:
+
 ## Acknowledgment
 
 This project is a Rust re-implementation from an existing bash project. You can view
