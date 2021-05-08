@@ -1,3 +1,6 @@
+> :warning: This project is intended as a playground to explore rust. **Long
+> term maintenance is not guaranteed.** Buyer beware.
+
 # heimdallr
 
 Connect to AWS EC2 hosts via a Bastion / Jump host
