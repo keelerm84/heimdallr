@@ -1,6 +1,8 @@
 > :warning: This project is intended as a playground to explore rust. **Long
 > term maintenance is not guaranteed.** Buyer beware.
 
+[![Trust but verify](https://github.com/keelerm84/heimdallr/actions/workflows/trust-but-verify.yml/badge.svg)](https://github.com/keelerm84/deploy/actions/workflows/trust-but-verify.yml)
+
 # heimdallr
 
 Connect to AWS EC2 hosts via a Bastion / Jump host
