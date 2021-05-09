@@ -9,8 +9,8 @@ pub struct Container {
 
 pub struct Connections {
     connections: HashMap<String, Connection>,
-    container_instance_id_to_task_id_map: HashMap<String, String>,
-    instance_id_to_task_id_map: HashMap<String, String>,
+    container_instance_id_to_task_id_map: HashMap<String, Vec<String>>,
+    instance_id_to_task_id_map: HashMap<String, Vec<String>>,
 }
 
 impl Connections {
@@ -51,7 +51,9 @@ impl Connections {
 
     pub fn set_container_instance_id(&mut self, task_id: String, container_instance_id: String) {
         self.container_instance_id_to_task_id_map
-            .insert(container_instance_id.clone(), task_id.clone());
+            .entry(container_instance_id.clone())
+            .or_insert(Vec::new())
+            .push(task_id.clone());
         self.connections
             .get_mut(&task_id)
             .unwrap()
@@ -59,30 +61,34 @@ impl Connections {
     }
 
     pub fn set_ec2_instance_id(&mut self, container_instance_id: String, ec2_instance_id: String) {
-        let task_id = self
+        let task_ids = self
             .container_instance_id_to_task_id_map
             .get(&container_instance_id)
             .unwrap();
 
         self.instance_id_to_task_id_map
-            .insert(ec2_instance_id.clone(), task_id.to_string());
+            .insert(ec2_instance_id.clone(), task_ids.clone());
 
-        self.connections
-            .get_mut(&task_id.clone())
-            .unwrap()
-            .set_instance_id(ec2_instance_id);
+        for task_id in task_ids {
+            self.connections
+                .get_mut(&task_id.clone())
+                .unwrap()
+                .set_instance_id(ec2_instance_id.clone());
+        }
     }
 
     pub fn set_name_and_ip(&mut self, ec2_instance_id: String, name: String, ip: String) {
-        let task_id = self
+        let task_ids = self
             .instance_id_to_task_id_map
             .get(&ec2_instance_id)
             .unwrap();
 
-        self.connections
-            .get_mut(&task_id.clone())
-            .unwrap()
-            .set_name_and_ip(name, ip);
+        for task_id in task_ids {
+            self.connections
+                .get_mut(&task_id.clone())
+                .unwrap()
+                .set_name_and_ip(name.clone(), ip.clone());
+        }
     }
 
     pub fn get_connections(&self) -> Vec<Connection> {
