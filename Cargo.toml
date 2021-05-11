@@ -18,5 +18,6 @@ rusoto_core = "0.46.0"
 rusoto_credential = "0.46.0"
 rusoto_ec2 = "0.46.0"
 rusoto_ecs = "0.46.0"
+self_update = "0.27.0"
 structopt = "0.3.21"
 tokio = { version = "1.5.0", features=["full"] }
