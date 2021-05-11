@@ -1,0 +1,77 @@
+name: Build and upload binaries
+
+on:
+  push:
+    branches:
+      - "!*"
+    tags:
+      - "*"
+
+jobs:
+  release-notes:
+    runs-on: "ubuntu-latest"
+    outputs:
+      notes: ${{ steps.release-notes.outputs.notes }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Parse changelog to get release notes
+        id: release-notes
+        shell: bash
+        run: |
+          notes=$(sed -n -e '/^## /,${p;/^- - -/q}' docs/CHANGELOG.md | sed '$ d')
+          notes="${notes//'%'/'%25'}"                               # Multiline escape sequences for %
+          notes="${notes//$'\n'/'%0A'}"                             # Multiline escape sequences for '\n'
+          notes="${notes//$'\r'/'%0D'}"                             # Multiline escape sequences for '\r'
+          echo "::set-output name=notes::${notes}"
+
+  publish-binaries:
+    needs: release-notes
+    name: Build and release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: heimdallr
+            target: x86_64-unknown-linux-musl
+          - os: ubuntu-latest
+            artifact_name: heimdallr
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            artifact_name: heimdallr
+            target: x86_64-apple-darwin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --target ${{ matrix.target }}
+
+      - name: Determine release version
+        id: tag-info
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | tr -dc '[0-9.]')
+
+          echo "::set-output name=version::${VERSION}"
+
+      - name: Upload binary to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+          asset_name: heimdallr-${{ matrix.target }}
+          tag: v${{ steps.tag-info.outputs.version }}
