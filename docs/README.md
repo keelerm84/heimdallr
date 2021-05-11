@@ -86,6 +86,21 @@ $ heimdallr connect --dns-name bastion.example.io --bastion-port 1234 --bastion-
 ssh -i ~/.ssh/id_rsa -p 1234 -A -t example-user@bastion.example.io "ssh -A -t ec2-user@PRIVATE-IP \"docker exec -it -detach-keys 'ctrl-q,q' SERVICE_CONTAINER_RUNTIME_ID ls -lah\""
 ```
 
+## Release process
+
+Install [cargo-make][cargo-make] and run the following command on main.
+
+```console
+cargo make release
+```
+
+This will ensure that the project is in good shape (`cargo test`, `cargo
+clippy`, `cargo build`, etc), generate a changelog and bump the appropriate
+versions.
+
+Once the commit and tag is pushed, a GitHub action will run to build static
+binaries and associate those artifacts with the latest release.
+
 ## FAQ
 
 ### Why doesn't the list command return any results?
@@ -110,3 +125,4 @@ This project is a Rust re-implementation from an existing bash project. You can 
 the original project [here][heimdall].
 
 [heimdall]: https://github.com/needcaffeine/heimdall
+[cargo-make]: https://github.com/sagiegurari/cargo-make

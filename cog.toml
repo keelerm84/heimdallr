@@ -1,7 +1,6 @@
 # Optional github repository url, used mainly to generate changelog links
 github = "https://github.com/keelerm84/heimdallr"
 
-
 # Optional changelog path ("CHANGELOG.md" if omitted)
 changelog_path = "docs/CHANGELOG.md"
 
@@ -15,13 +14,12 @@ pre_bump_hooks = [
     "cargo bump {{version}}"
 ]
 
-
 # A list of command to run AFTER creating a version.
 # `{{version}}` will be interpreted as your target version
-# post_bump_hooks = [
-#     "git push",
-#     "git push origin {{version}}"
-# ]
+post_bump_hooks = [
+    "git push",
+    "git push origin {{version}}"
+]
 
 # An optional list of additional allowed commit type
 # `coco {commit_type}` commit command will be generated at runtime

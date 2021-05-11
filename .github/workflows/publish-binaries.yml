@@ -74,4 +74,6 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
           asset_name: heimdallr-${{ matrix.target }}
-          tag: v${{ steps.tag-info.outputs.version }}
+          tag: ${{ steps.tag-info.outputs.version }}
+          body: |
+            ${{ needs.release-notes.outputs.notes }}
