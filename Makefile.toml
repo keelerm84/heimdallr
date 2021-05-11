@@ -1,0 +1,12 @@
+[tasks.install-bump]
+install_crate = { crate_name = "bump", binary = "cargo", test_arg = ["bump", "--help" ] }
+
+[tasks.install-cocogitto]
+install_crate = { crate_name = "cocogitto", binary = "cog", test_arg = "--help" }
+dependencies = [ "install-bump" ]
+
+[tasks.release]
+description = "Bump version, generate changelog, and push a new tag"
+command = "cog"
+args = ["bump", "--auto"]
+dependencies = [ "install-cocogitto" ]

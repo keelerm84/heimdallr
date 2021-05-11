@@ -156,6 +156,20 @@ async fn main() -> Result<()> {
             )
             .await
         }
-        _ => Ok(()),
+        Command::Update => {
+            tokio::task::spawn_blocking(move || {
+                let status = self_update::backends::github::Update::configure()
+                    .repo_owner("keelerm84")
+                    .repo_name(env!("CARGO_PKG_NAME"))
+                    .bin_name("heimdallr")
+                    .show_download_progress(true)
+                    .current_version(env!("CARGO_PKG_VERSION"))
+                    .build()?
+                    .update()?;
+                println!("Update status: `{}`!", status.version());
+                Ok(())
+            })
+            .await?
+        }
     }
 }

@@ -3,6 +3,7 @@ name = "heimdallr"
 version = "0.1.0"
 authors = ["Matthew M. Keeler <keelerm84@gmail.com>"]
 edition = "2018"
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -12,6 +13,7 @@ config = "0.11.0"
 dialoguer = "0.8.0"
 dirs = "3.0.2"
 itertools = "0.10.0"
+openssl = { version = "0.10", features=["vendored"] }
 prettytable-rs = "0.8.0"
 public-ip = "0.2.0"
 rusoto_core = "0.46.0"
@@ -19,5 +21,6 @@ rusoto_credential = "0.46.0"
 rusoto_ec2 = "0.46.0"
 rusoto_ecs = "0.46.0"
 serde = { version = "1.0.125", features = ["derive"] }
+self_update = "0.27.0"
 structopt = "0.3.21"
-tokio = "1.5.0"
+tokio = { version = "1.5.0", features=["full"] }
