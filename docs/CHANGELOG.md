@@ -2,6 +2,20 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.0 - 2021-05-13
+
+
+### Features
+
+[4d119f](https://github.com/keelerm84/heimdallr/commit/4d119fdcdb35a39b82724e5d05b628571fcb6e6e) - Introduce configuration file (#2) - Matthew M. Keeler
+
+
+### Documentation
+
+[b6f89a](https://github.com/keelerm84/heimdallr/commit/b6f89ab37757c9096b6e2ce005fdc7410686217d) - Remove completed tasks from roadmap - Matthew M. Keeler
+
+
+- - -
 ## 0.1.0 - 2021-05-11
 
 
