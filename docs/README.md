@@ -7,6 +7,28 @@
 
 Connect to AWS EC2 hosts via a Bastion / Jump host
 
+## Configuration file
+
+You must create a configuration file located at `~/.config/heimdallr.toml`. An
+example configuration is shown below.
+
+```toml
+[profiles]
+
+[profiles.default]
+aws_profile = "default"
+security_group_id = "sg-12345678"
+dns_name = "bastion.example.io"
+bastion_port = 1234
+bastion_user = "example-user"
+ec2_user = "ec2-user"
+identity_file = "~/.ssh/id_rsa"
+```
+
+Note that each of these options can be overridden with an equivalent command
+line option. This allows you to define reasonable defaults, but the flexible to
+override when needed.
+
 ## Usage and examples
 
 ```console
@@ -23,7 +45,7 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-    -p, --profile <profile>    Profile name as specified in your configuration file
+    -p, --profile <profile>    Profile name as specified in your configuration file [default: default]
 
 SUBCOMMANDS:
     connect    Connect to a running instance
@@ -47,13 +69,13 @@ $ heimdallr list
 Add your IPv4 address to the specified security group (with optional description).
 
 ```console
-$ heimdallr grant --security-group-id sg-12345678 --description "Home machine"
+$ heimdallr --profile default grant --description "Home machine"
 ```
 
 Remove your IPv4 address from the specified security group.
 
 ```console
-$ heimdallr revoke --security-group-id sg-12345678
+$ heimdallr --profile default revoke
 ```
 
 Generate the appropriate ssh command to:
@@ -61,28 +83,35 @@ Generate the appropriate ssh command to:
 **Connect to an EC2 instance**
 
 ```console
-$ heimdallr connect --dns-name bastion.example.io --bastion-port 1234 --bastion-user example-user --ec2-user ec2-user --identity-file ~/.ssh/id_rsa StagingInstance1
+$ heimdallr --profile default connect StagingInstance1
 ssh -i ~/.ssh/id_rsa -p 1234 -A -t example-user@bastion.example.io ssh -A -t ec2-user@PRIVATE-IP bash
 ```
 
 **Connect to a service running on a specific cluster.**
 
 ```console
-$ heimdallr connect --dns-name bastion.example.io --bastion-port 1234 --bastion-user example-user --ec2-user ec2-user --identity-file ~/.ssh/id_rsa cluster#service
+$ heimdallr --profile default connect cluster#service
 ssh -i ~/.ssh/id_rsa -p 1234 -A -t example-user@bastion.example.io "ssh -A -t ec2-user@PRIVATE-IP \"docker exec -it -detach-keys 'ctrl-q,q' SERVICE_CONTAINER_RUNTIME_ID bash\""
+```
+
+**Connect to a service running on a specific cluster while override configuration options.**
+
+```console
+$ heimdallr --profile default connect --dns-name bastion-staging.example.io --bastion-user bastion-user cluster#service
+ssh -i ~/.ssh/id_rsa -p 1234 -A -t bastion-user@bastion-staging.example.io "ssh -A -t ec2-user@PRIVATE-IP \"docker exec -it -detach-keys 'ctrl-q,q' SERVICE_CONTAINER_RUNTIME_ID bash\""
 ```
 
 **Connect to a particular container if the service is running multiple tasks**
 
 ```console
-$ heimdallr connect --dns-name bastion.example.io --bastion-port 1234 --bastion-user example-user --ec2-user ec2-user --identity-file ~/.ssh/id_rsa cluster#service#container
+$ heimdallr --profile default connect cluster#service#container
 ssh -i ~/.ssh/id_rsa -p 1234 -A -t example-user@bastion.example.io "ssh -A -t ec2-user@PRIVATE-IP \"docker exec -it -detach-keys 'ctrl-q,q' SERVICE_CONTAINER_RUNTIME_ID bash\""
 ```
 
 **Connect and run arbitrary command**
 
 ```console
-$ heimdallr connect --dns-name bastion.example.io --bastion-port 1234 --bastion-user example-user --ec2-user ec2-user --identity-file ~/.ssh/id_rsa cluster#service#container ls -lah
+$ heimdallr --profile default connect cluster#service#container ls -lah
 ssh -i ~/.ssh/id_rsa -p 1234 -A -t example-user@bastion.example.io "ssh -A -t ec2-user@PRIVATE-IP \"docker exec -it -detach-keys 'ctrl-q,q' SERVICE_CONTAINER_RUNTIME_ID ls -lah\""
 ```
 
@@ -111,11 +140,6 @@ set Name and Env tags on each instance.
 ## License
 
 [MIT](./LICENSE.md)
-
-## Roadmap
-
-- Introduce configuration file to reduce command line parameter requirements
-- Lots of refactoring as I learn more about rust :crab:
 
 ## Acknowledgment
 

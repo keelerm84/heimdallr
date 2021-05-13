@@ -52,7 +52,7 @@ impl Connections {
     pub fn set_container_instance_id(&mut self, task_id: String, container_instance_id: String) {
         self.container_instance_id_to_task_id_map
             .entry(container_instance_id.clone())
-            .or_insert(Vec::new())
+            .or_insert_with(Vec::new)
             .push(task_id.clone());
         self.connections
             .get_mut(&task_id)
@@ -169,7 +169,7 @@ pub trait SshConnection: fmt::Display {
     fn connection(
         &self,
         dns_name: String,
-        bastion_port: String,
+        bastion_port: u16,
         bastion_user: String,
         ec2_user: String,
         ssh_identity_file: String,
@@ -201,7 +201,7 @@ impl SshConnection for ContainerChoice {
     fn connection(
         &self,
         dns_name: String,
-        bastion_port: String,
+        bastion_port: u16,
         bastion_user: String,
         ec2_user: String,
         ssh_identity_file: String,
@@ -241,7 +241,7 @@ impl SshConnection for HostConnection {
     fn connection(
         &self,
         dns_name: String,
-        bastion_port: String,
+        bastion_port: u16,
         bastion_user: String,
         ec2_user: String,
         ssh_identity_file: String,

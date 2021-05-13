@@ -5,7 +5,7 @@ use dialoguer::{theme::ColorfulTheme, Select};
 pub async fn connect(
     handler: Handler<'_>,
     dns_name: String,
-    bastion_port: String,
+    bastion_port: u16,
     bastion_user: String,
     ec2_user: String,
     ssh_identity_file: String,

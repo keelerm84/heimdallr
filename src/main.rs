@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rusoto_core::{region, HttpClient};
 use rusoto_credential::ProfileProvider;
 use rusoto_ec2::Ec2Client;
@@ -7,6 +7,7 @@ use structopt::StructOpt;
 
 mod application;
 mod domain;
+mod settings;
 mod ui;
 
 /// Connect to AWS EC2 hosts via a Bastion / Jump host
@@ -14,8 +15,8 @@ mod ui;
 #[structopt(name = "heimdallr", global_settings = &[structopt::clap::AppSettings::AllowLeadingHyphen])]
 struct Heimdallr {
     /// Profile name as specified in your configuration file
-    #[structopt(name = "profile", long, short = "p")]
-    profile: Option<String>,
+    #[structopt(name = "profile", long, short = "p", default_value = "default")]
+    profile: String,
 
     #[structopt(subcommand)]
     cmd: Command,
@@ -28,10 +29,10 @@ enum Command {
 
     /// Add your IP to a security group to allow ingress
     Grant {
-        // TODO(mmk) Security group will eventually be optional once config support is added
-        /// The security group id that controls ingress to the bastion server
+        /// Override the security group id that controls ingress to the bastion server for the
+        /// specified profile
         #[structopt(name = "security-group-id", long, short = "s")]
-        security_group_id: String,
+        security_group_id: Option<String>,
 
         /// Descriptive text to include with your security group entry
         #[structopt(name = "description", long, short = "d")]
@@ -40,33 +41,34 @@ enum Command {
 
     /// Revoke your IP from a security group to prevent future ingress
     Revoke {
-        /// The security group id that controls ingress to the bastion server
+        /// Override the security group id that controls ingress to the bastion server for the
+        /// specified profile
         #[structopt(name = "security-group-id", long, short = "s")]
-        security_group_id: String,
+        security_group_id: Option<String>,
     },
 
     /// Connect to a running instance
     Connect {
-        /// The host name of the bastion server
+        /// Override the host name of the bastion server for the specified profile
         #[structopt(name = "dns-name", long, short = "d")]
-        dns_name: String,
+        dns_name: Option<String>,
 
-        /// The ssh port of the bastion server
+        /// Override the ssh port of the bastion server for the specified profile
         #[structopt(name = "bastion-port", long, short = "p")]
-        bastion_port: String,
+        bastion_port: Option<u16>,
 
-        /// The ssh user of the bastion server
+        /// Override the ssh user of the bastion server for the specified profile
         #[structopt(name = "bastion-user", long, short = "u")]
-        bastion_user: String,
+        bastion_user: Option<String>,
 
-        /// The user of the ec2 server
+        /// Override the user of the ec2 server for the specified profile
         #[structopt(name = "ec2-user", long, short = "e")]
-        ec2_user: String,
+        ec2_user: Option<String>,
 
         // TODO(mmk) Is there a better variable type to verify that the file exists?
-        /// The ssh identity file to use
+        /// Override the ssh identity file to use for the specified profile
         #[structopt(name = "identity-file", long, short = "i")]
-        identity_file: String,
+        identity_file: Option<String>,
 
         /// The target to connect. Supported formats are host, user@host, cluster#service,
         /// cluster#service#container
@@ -84,10 +86,19 @@ enum Command {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let settings = settings::Settings::new()?;
     let opt = Heimdallr::from_args();
 
+    let profile_settings = match settings.profiles.get(&opt.profile) {
+        Some(s) => Ok(s),
+        _ => Err(anyhow!(
+            "Could not find specified profile entry {}. Please check your configuration file.",
+            &opt.profile
+        )),
+    }?;
+
     let mut provider = ProfileProvider::new()?;
-    provider.set_profile(opt.profile.unwrap_or_else(|| "default".into()));
+    provider.set_profile(profile_settings.aws_profile.clone());
 
     let ec2_client = Ec2Client::new_with(
         HttpClient::new().unwrap(),
@@ -111,12 +122,17 @@ async fn main() -> Result<()> {
             description,
         } => {
             security_group_handler
-                .grant_access(security_group_id, description)
+                .grant_access(
+                    security_group_id.unwrap_or_else(|| profile_settings.security_group_id.clone()),
+                    description,
+                )
                 .await
         }
         Command::Revoke { security_group_id } => {
             security_group_handler
-                .revoke_access(security_group_id)
+                .revoke_access(
+                    security_group_id.unwrap_or_else(|| profile_settings.security_group_id.clone()),
+                )
                 .await
         }
         Command::Connect {
@@ -130,11 +146,11 @@ async fn main() -> Result<()> {
         } => {
             ui::connect::connect(
                 connect_handler,
-                dns_name,
-                bastion_port,
-                bastion_user,
-                ec2_user,
-                identity_file,
+                dns_name.unwrap_or_else(|| profile_settings.dns_name.clone()),
+                bastion_port.unwrap_or_else(|| profile_settings.bastion_port),
+                bastion_user.unwrap_or_else(|| profile_settings.bastion_user.clone()),
+                ec2_user.unwrap_or_else(|| profile_settings.ec2_user.clone()),
+                identity_file.unwrap_or_else(|| profile_settings.identity_file.clone()),
                 &target,
                 cmd,
             )
