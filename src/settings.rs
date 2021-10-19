@@ -31,6 +31,9 @@ pub struct Profile {
     /// Profile name as specified in your ~/.aws/credentials file
     pub aws_profile: String,
 
+    /// AWS region servers exist in
+    pub aws_region: String,
+
     /// The security group id that controls ingress to the bastion server
     pub security_group_id: String,
 
