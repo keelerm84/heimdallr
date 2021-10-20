@@ -100,16 +100,10 @@ async fn main() -> Result<()> {
     let mut provider = ProfileProvider::new()?;
     provider.set_profile(profile_settings.aws_profile.clone());
 
-    let ec2_client = Ec2Client::new_with(
-        HttpClient::new().unwrap(),
-        provider.clone(),
-        region::Region::UsEast1,
-    );
-    let ecs_client = EcsClient::new_with(
-        HttpClient::new().unwrap(),
-        provider,
-        region::Region::UsEast1,
-    );
+    let region = profile_settings.aws_region.parse::<region::Region>()?;
+
+    let ec2_client = Ec2Client::new_with(HttpClient::new()?, provider.clone(), region.clone());
+    let ecs_client = EcsClient::new_with(HttpClient::new()?, provider, region);
 
     let security_group_handler = application::security_groups::Handler::new(&ec2_client);
     let list_instances_handler = application::list_instances::Handler::new(&ec2_client);
