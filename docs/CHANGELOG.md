@@ -2,6 +2,17 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.3.0 - 2021-10-20
+
+
+### Features
+
+[a337c7](https://github.com/keelerm84/heimdallr/commit/a337c75ec5f72c860f66f3bc7cb71f05171a6bea) - Add StrictHostKeyChecking=no to ssh (#4) - Beshoy Girgis
+
+[53c422](https://github.com/keelerm84/heimdallr/commit/53c422fbf65443269050a5356325d6a6ddc27a2e) - Add support for configurable region (#3) - Beshoy Girgis
+
+
+- - -
 ## 0.2.0 - 2021-05-13
 
 
