@@ -208,7 +208,7 @@ impl SshConnection for ContainerChoice {
         cmd: Vec<String>,
     ) -> String {
         format!(
-            "ssh -i {identity_file} -p {bastion_port} -A -t {bastion_user}@{dns_name} \"ssh -A -t {ec2_user}@{ip} \\\"docker exec -it --detach-keys 'ctrl-q,q' {docker_id} {cmd}\\\"\"",
+            "ssh -o StrictHostKeyChecking=no -i {identity_file} -p {bastion_port} -A -t {bastion_user}@{dns_name} \"ssh -o StrictHostKeyChecking=no -A -t {ec2_user}@{ip} \\\"docker exec -it --detach-keys 'ctrl-q,q' {docker_id} {cmd}\\\"\"",
             identity_file=ssh_identity_file,
             bastion_port=bastion_port,
             bastion_user=bastion_user,
@@ -248,7 +248,7 @@ impl SshConnection for HostConnection {
         cmd: Vec<String>,
     ) -> String {
         format!(
-            "ssh -i {identity_file} -p {bastion_port} -A -t {bastion_user}@{dns_name} ssh -A -t {ec2_user}@{ip} {cmd}",
+            "ssh -o StrictHostKeyChecking=no -i {identity_file} -p {bastion_port} -A -t {bastion_user}@{dns_name} ssh -o StrictHostKeyChecking=no -A -t {ec2_user}@{ip} {cmd}",
             identity_file=ssh_identity_file,
             bastion_port=bastion_port,
             bastion_user=bastion_user,
